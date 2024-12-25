@@ -17,7 +17,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\RuleForge\RuleForge.csproj" />
+        <ProjectReference Include="..\RuleForge2\RuleForge2.csproj" />
     </ItemGroup>
 
 </Project>
