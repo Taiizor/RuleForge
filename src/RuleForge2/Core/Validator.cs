@@ -14,8 +14,8 @@ namespace RuleForge2.Core
     /// <typeparam name="T">The type to validate.</typeparam>
     public abstract class Validator<T> : IValidator<T>
     {
-        private readonly Dictionary<string, List<RuleBuilder<T, object>>> _ruleSetMap = new Dictionary<string, List<RuleBuilder<T, object>>>();
-        private readonly List<RuleBuilder<T, object>> _rules = new List<RuleBuilder<T, object>>();
+        private readonly Dictionary<string, List<(string PropertyName, object Rule, Type PropertyType)>> _ruleSetMap = new Dictionary<string, List<(string PropertyName, object Rule, Type PropertyType)>>();
+        private readonly List<(string PropertyName, object Rule, Type PropertyType)> _rules = new List<(string PropertyName, object Rule, Type PropertyType)>();
 
         /// <summary>
         /// Creates a rule builder for a property.
@@ -27,7 +27,7 @@ namespace RuleForge2.Core
         {
             var propertyName = GetPropertyName(expression);
             var builder = new RuleBuilder<T, TProperty>(propertyName);
-            _rules.Add(builder as RuleBuilder<T, object>);
+            _rules.Add((propertyName, builder, typeof(TProperty)));
             return builder;
         }
 
@@ -45,10 +45,10 @@ namespace RuleForge2.Core
 
             if (!_ruleSetMap.ContainsKey(ruleSet))
             {
-                _ruleSetMap[ruleSet] = new List<RuleBuilder<T, object>>();
+                _ruleSetMap[ruleSet] = new List<(string PropertyName, object Rule, Type PropertyType)>();
             }
 
-            _ruleSetMap[ruleSet].Add(builder as RuleBuilder<T, object>);
+            _ruleSetMap[ruleSet].Add((propertyName, builder, typeof(TProperty)));
             return builder;
         }
 
@@ -104,41 +104,95 @@ namespace RuleForge2.Core
             return ValidateInternalAsync(instance, _ruleSetMap[ruleSet]);
         }
 
-        private ValidationResult ValidateInternal(T instance, List<RuleBuilder<T, object>> rules)
+        private ValidationResult ValidateInternal(T instance, List<(string PropertyName, object Rule, Type PropertyType)> rules)
         {
-            var results = new List<ValidationResult>();
+            var validationResult = new ValidationResult();
 
-            foreach (var builder in rules)
+            foreach (var (propertyName, rule, propertyType) in rules)
             {
-                if (builder.CheckConditions(instance))
+                if (rule != null)
                 {
-                    var rule = builder.Build();
-                    var result = rule.Validate(instance);
-                    if (!result.IsValid)
+                    var ruleType = rule.GetType();
+                    var checkConditionsMethod = ruleType.GetMethod("CheckConditions");
+                    var buildMethod = ruleType.GetMethod("Build");
+
+                    if (checkConditionsMethod != null && buildMethod != null)
                     {
-                        results.Add(result);
+                        var conditionResult = (bool)checkConditionsMethod.Invoke(rule, new object[] { instance });
+                        if (conditionResult)
+                        {
+                            var validationRule = buildMethod.Invoke(rule, Array.Empty<object>());
+                            if (validationRule != null)
+                            {
+                                var validateMethod = validationRule.GetType().GetMethod("Validate");
+                                if (validateMethod != null)
+                                {
+                                    var propertyValue = GetPropertyValue(instance, propertyName);
+                                    var result = (ValidationResult)validateMethod.Invoke(validationRule, new[] { propertyValue });
+                                    if (!result.IsValid)
+                                    {
+                                        foreach (var error in result.Errors)
+                                        {
+                                            validationResult.AddError(propertyName, error.ErrorMessage, error.Severity);
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
 
-            return ValidationResult.Combine(results.ToArray());
+            return validationResult;
         }
 
-        private async Task<ValidationResult> ValidateInternalAsync(T instance, List<RuleBuilder<T, object>> rules)
+        private async Task<ValidationResult> ValidateInternalAsync(T instance, List<(string PropertyName, object Rule, Type PropertyType)> rules)
         {
-            var tasks = new List<Task<ValidationResult>>();
+            var validationResult = new ValidationResult();
+            var tasks = new List<(string PropertyName, Task<ValidationResult>)>();
 
-            foreach (var builder in rules)
+            foreach (var (propertyName, rule, propertyType) in rules)
             {
-                if (builder.CheckConditions(instance))
+                if (rule != null)
                 {
-                    var rule = builder.Build();
-                    tasks.Add(rule.ValidateAsync(instance));
+                    var ruleType = rule.GetType();
+                    var checkConditionsMethod = ruleType.GetMethod("CheckConditions");
+                    var buildMethod = ruleType.GetMethod("Build");
+
+                    if (checkConditionsMethod != null && buildMethod != null)
+                    {
+                        var conditionResult = (bool)checkConditionsMethod.Invoke(rule, new object[] { instance });
+                        if (conditionResult)
+                        {
+                            var validationRule = buildMethod.Invoke(rule, Array.Empty<object>());
+                            if (validationRule != null)
+                            {
+                                var validateAsyncMethod = validationRule.GetType().GetMethod("ValidateAsync");
+                                if (validateAsyncMethod != null)
+                                {
+                                    var propertyValue = GetPropertyValue(instance, propertyName);
+                                    var task = (Task<ValidationResult>)validateAsyncMethod.Invoke(validationRule, new[] { propertyValue });
+                                    tasks.Add((propertyName, task));
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
-            var results = await Task.WhenAll(tasks);
-            return ValidationResult.Combine(results);
+            foreach (var (propertyName, task) in tasks)
+            {
+                var result = await task;
+                if (!result.IsValid)
+                {
+                    foreach (var error in result.Errors)
+                    {
+                        validationResult.AddError(propertyName, error.ErrorMessage, error.Severity);
+                    }
+                }
+            }
+
+            return validationResult;
         }
 
         private string GetPropertyName<TProperty>(Expression<Func<T, TProperty>> expression)
@@ -149,6 +203,17 @@ namespace RuleForge2.Core
             }
 
             throw new ArgumentException("Expression must be a member expression");
+        }
+
+        private object GetPropertyValue(T instance, string propertyName)
+        {
+            var property = typeof(T).GetProperty(propertyName);
+            if (property == null)
+            {
+                throw new ArgumentException($"Property '{propertyName}' not found on type '{typeof(T).Name}'");
+            }
+
+            return property.GetValue(instance);
         }
     }
 }

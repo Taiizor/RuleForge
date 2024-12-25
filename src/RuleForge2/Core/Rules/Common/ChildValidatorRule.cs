@@ -42,13 +42,7 @@ namespace RuleForge2.Core.Rules.Common
                 return ValidationResult.Success(); // Null check should be handled by NotEmptyRule
             }
 
-            var result = _validator.Validate(value);
-            if (!result.IsValid)
-            {
-                return result;
-            }
-
-            return ValidationResult.Success();
+            return _validator.Validate(value);
         }
 
         /// <summary>
@@ -63,13 +57,7 @@ namespace RuleForge2.Core.Rules.Common
                 return ValidationResult.Success(); // Null check should be handled by NotEmptyRule
             }
 
-            var result = await _validator.ValidateAsync(value);
-            if (!result.IsValid)
-            {
-                return result;
-            }
-
-            return ValidationResult.Success();
+            return await _validator.ValidateAsync(value);
         }
     }
 }

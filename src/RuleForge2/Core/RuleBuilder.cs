@@ -27,7 +27,7 @@ namespace RuleForge2.Core
         /// <param name="propertyName">The name of the property being validated.</param>
         public RuleBuilder(string propertyName)
         {
-            PropertyName = propertyName;
+            PropertyName = propertyName ?? throw new ArgumentNullException(nameof(propertyName));
         }
 
         /// <summary>
@@ -36,6 +36,10 @@ namespace RuleForge2.Core
         /// <param name="rule">The rule to add.</param>
         public void AddRule(IRule<TProperty> rule)
         {
+            if (rule == null)
+            {
+                throw new ArgumentNullException(nameof(rule));
+            }
             _rules.Add(rule);
         }
 
@@ -43,9 +47,14 @@ namespace RuleForge2.Core
         /// Adds a condition that must be met for the rules to be validated.
         /// </summary>
         /// <param name="condition">The condition to add.</param>
-        public void AddCondition(Func<T, bool> condition)
+        public RuleBuilder<T, TProperty> When(Func<T, bool> condition)
         {
+            if (condition == null)
+            {
+                throw new ArgumentNullException(nameof(condition));
+            }
             _conditions.Add(condition);
+            return this;
         }
 
         /// <summary>
@@ -64,7 +73,17 @@ namespace RuleForge2.Core
         /// <returns>True if all conditions are met, false otherwise.</returns>
         public bool CheckConditions(T instance)
         {
-            return _conditions.Count == 0 || _conditions.TrueForAll(c => c(instance));
+            return _conditions.Count == 0 || _conditions.TrueForAll(c => c != null && c(instance));
+        }
+
+        /// <summary>
+        /// Converts the value to the type of the property.
+        /// </summary>
+        /// <param name="value">The value to convert.</param>
+        /// <returns>The converted value.</returns>
+        public TProperty ConvertValue(T value)
+        {
+            return (TProperty)Convert.ChangeType(value, typeof(TProperty));
         }
     }
 
@@ -79,7 +98,7 @@ namespace RuleForge2.Core
         /// <summary>
         /// Gets or sets the error message for the rule.
         /// </summary>
-        public string ErrorMessage { get; set; }
+        public string ErrorMessage { get; set; } = "Validation failed";
 
         /// <summary>
         /// Initializes a new instance of the CompositeRule class.
@@ -87,7 +106,7 @@ namespace RuleForge2.Core
         /// <param name="rules">The rules to combine.</param>
         public CompositeRule(IEnumerable<IRule<T>> rules)
         {
-            _rules = rules;
+            _rules = rules ?? throw new ArgumentNullException(nameof(rules));
         }
 
         /// <summary>
@@ -97,17 +116,23 @@ namespace RuleForge2.Core
         /// <returns>A validation result.</returns>
         public ValidationResult Validate(T value)
         {
-            var results = new List<ValidationResult>();
+            var validationResult = new ValidationResult();
             foreach (var rule in _rules)
             {
-                var result = rule.Validate(value);
-                if (!result.IsValid)
+                if (rule != null)
                 {
-                    results.Add(result);
+                    var result = rule.Validate(value);
+                    if (!result.IsValid)
+                    {
+                        foreach (var error in result.Errors)
+                        {
+                            validationResult.AddError(error.PropertyName, error.ErrorMessage, error.Severity);
+                        }
+                    }
                 }
             }
 
-            return ValidationResult.Combine(results.ToArray());
+            return validationResult;
         }
 
         /// <summary>
@@ -117,14 +142,23 @@ namespace RuleForge2.Core
         /// <returns>A task that represents the asynchronous validation operation.</returns>
         public async Task<ValidationResult> ValidateAsync(T value)
         {
-            var tasks = new List<Task<ValidationResult>>();
+            var validationResult = new ValidationResult();
             foreach (var rule in _rules)
             {
-                tasks.Add(rule.ValidateAsync(value));
+                if (rule != null)
+                {
+                    var result = await rule.ValidateAsync(value);
+                    if (!result.IsValid)
+                    {
+                        foreach (var error in result.Errors)
+                        {
+                            validationResult.AddError(error.PropertyName, error.ErrorMessage, error.Severity);
+                        }
+                    }
+                }
             }
 
-            var results = await Task.WhenAll(tasks);
-            return ValidationResult.Combine(results);
+            return validationResult;
         }
     }
 }
