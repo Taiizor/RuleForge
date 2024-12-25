@@ -11,14 +11,34 @@ namespace RuleForge2.Core.Validation
         private readonly List<ValidationError> _errors;
 
         /// <summary>
-        /// Gets a value indicating whether the validation was successful.
+        /// Gets the validation errors.
+        /// </summary>
+        public IReadOnlyList<ValidationError> Errors => _errors;
+
+        /// <summary>
+        /// Gets whether the validation was successful.
         /// </summary>
         public bool IsValid => !_errors.Any();
 
         /// <summary>
-        /// Gets the collection of validation errors.
+        /// Gets whether the validation has any errors with the specified severity.
         /// </summary>
-        public IReadOnlyList<ValidationError> Errors => _errors;
+        /// <param name="severity">The severity to check for.</param>
+        /// <returns>True if there are any errors with the specified severity, false otherwise.</returns>
+        public bool HasErrorsWithSeverity(Severity severity)
+        {
+            return _errors.Any(e => e.Severity == severity);
+        }
+
+        /// <summary>
+        /// Gets all errors with the specified severity.
+        /// </summary>
+        /// <param name="severity">The severity to filter by.</param>
+        /// <returns>A list of validation errors with the specified severity.</returns>
+        public IEnumerable<ValidationError> GetErrorsWithSeverity(Severity severity)
+        {
+            return _errors.Where(e => e.Severity == severity);
+        }
 
         /// <summary>
         /// Initializes a new instance of the ValidationResult class.
@@ -47,15 +67,40 @@ namespace RuleForge2.Core.Validation
         }
 
         /// <summary>
-        /// Creates a failed validation result with a single error.
+        /// Creates a validation result with an error.
         /// </summary>
-        /// <param name="propertyName">The name of the property that failed validation.</param>
+        /// <param name="propertyName">The name of the property with the error.</param>
         /// <param name="errorMessage">The error message.</param>
-        /// <param name="severity">The severity of the validation error.</param>
-        /// <returns>A failed validation result.</returns>
+        /// <param name="severity">The severity of the error.</param>
+        /// <returns>A validation result with an error.</returns>
         public static ValidationResult Error(string propertyName, string errorMessage, Severity severity = Severity.Error)
         {
-            return new ValidationResult(new[] { new ValidationError(propertyName, errorMessage, severity) });
+            var result = new ValidationResult();
+            result.AddError(propertyName, errorMessage, severity);
+            return result;
+        }
+
+        /// <summary>
+        /// Adds an error to the validation result.
+        /// </summary>
+        /// <param name="propertyName">The name of the property with the error.</param>
+        /// <param name="errorMessage">The error message.</param>
+        /// <param name="severity">The severity of the error.</param>
+        public void AddError(string propertyName, string errorMessage, Severity severity = Severity.Error)
+        {
+            _errors.Add(new ValidationError(propertyName, errorMessage, severity));
+        }
+
+        /// <summary>
+        /// Merges another validation result into this one.
+        /// </summary>
+        /// <param name="other">The validation result to merge.</param>
+        public void MergeWith(ValidationResult other)
+        {
+            if (other != null)
+            {
+                _errors.AddRange(other._errors);
+            }
         }
 
         /// <summary>
@@ -72,17 +117,6 @@ namespace RuleForge2.Core.Validation
 
             var errors = results.SelectMany(r => r.Errors).ToList();
             return new ValidationResult(errors);
-        }
-
-        /// <summary>
-        /// Adds a validation error to this result.
-        /// </summary>
-        /// <param name="propertyName">The name of the property that failed validation.</param>
-        /// <param name="errorMessage">The error message.</param>
-        /// <param name="severity">The severity of the validation error.</param>
-        public void AddError(string propertyName, string errorMessage, Severity severity = Severity.Error)
-        {
-            _errors.Add(new ValidationError(propertyName, errorMessage, severity));
         }
     }
 }

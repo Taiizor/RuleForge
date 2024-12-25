@@ -14,206 +14,223 @@ namespace RuleForge2.Core
     /// <typeparam name="T">The type to validate.</typeparam>
     public abstract class Validator<T> : IValidator<T>
     {
-        private readonly Dictionary<string, List<(string PropertyName, object Rule, Type PropertyType)>> _ruleSetMap = new Dictionary<string, List<(string PropertyName, object Rule, Type PropertyType)>>();
-        private readonly List<(string PropertyName, object Rule, Type PropertyType)> _rules = new List<(string PropertyName, object Rule, Type PropertyType)>();
+        private readonly Dictionary<string, RuleSet<T>> _ruleSets;
+        private readonly RuleSet<T> _defaultRuleSet;
+        private CascadeMode _cascadeMode;
+        private IMessageFormatter? _messageFormatter;
+        private string _currentRuleSet;
+
+        /// <summary>
+        /// Gets or sets the cascade mode for all rules.
+        /// </summary>
+        public CascadeMode CascadeMode
+        {
+            get => _cascadeMode;
+            set
+            {
+                _cascadeMode = value;
+                foreach (var ruleSet in _ruleSets.Values)
+                {
+                    foreach (var rule in ruleSet.Rules)
+                    {
+                        if (rule is IRuleWithCascadeMode cascadeRule)
+                        {
+                            cascadeRule.CascadeMode = value;
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the message formatter for all rules.
+        /// </summary>
+        public IMessageFormatter? MessageFormatter
+        {
+            get => _messageFormatter;
+            set
+            {
+                _messageFormatter = value;
+                foreach (var ruleSet in _ruleSets.Values)
+                {
+                    foreach (var rule in ruleSet.Rules)
+                    {
+                        rule.MessageFormatter = value;
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Initializes a new instance of the Validator class.
+        /// </summary>
+        protected Validator()
+        {
+            _ruleSets = new Dictionary<string, RuleSet<T>>();
+            _defaultRuleSet = new RuleSet<T>("default");
+            _ruleSets.Add(_defaultRuleSet.Name, _defaultRuleSet);
+            _currentRuleSet = _defaultRuleSet.Name;
+            _cascadeMode = CascadeMode.Continue;
+        }
 
         /// <summary>
         /// Creates a rule builder for a property.
         /// </summary>
         /// <typeparam name="TProperty">The type of the property.</typeparam>
-        /// <param name="expression">Expression to get the property value.</param>
-        /// <returns>A rule builder for the property.</returns>
+        /// <param name="expression">The property expression.</param>
+        /// <returns>A rule builder.</returns>
         protected RuleBuilder<T, TProperty> RuleFor<TProperty>(Expression<Func<T, TProperty>> expression)
         {
-            var propertyName = GetPropertyName(expression);
-            var builder = new RuleBuilder<T, TProperty>(propertyName);
-            _rules.Add((propertyName, builder, typeof(TProperty)));
-            return builder;
+            var propertyName = expression.Body.ToString();
+            return new RuleBuilder<T, TProperty>(propertyName, rule =>
+            {
+                var currentRuleSet = _ruleSets[_currentRuleSet];
+                currentRuleSet.Rules.Add(rule);
+            });
         }
 
         /// <summary>
-        /// Creates a rule builder for a property in a specific rule set.
+        /// Creates a new rule set.
         /// </summary>
-        /// <typeparam name="TProperty">The type of the property.</typeparam>
-        /// <param name="expression">Expression to get the property value.</param>
-        /// <param name="ruleSet">The rule set name.</param>
-        /// <returns>A rule builder for the property.</returns>
-        protected RuleBuilder<T, TProperty> RuleFor<TProperty>(Expression<Func<T, TProperty>> expression, string ruleSet)
+        /// <param name="name">The name of the rule set.</param>
+        /// <param name="action">The action to configure rules in the set.</param>
+        protected void RuleSet(string name, Action action)
         {
-            var propertyName = GetPropertyName(expression);
-            var builder = new RuleBuilder<T, TProperty>(propertyName);
-
-            if (!_ruleSetMap.ContainsKey(ruleSet))
+            if (!_ruleSets.ContainsKey(name))
             {
-                _ruleSetMap[ruleSet] = new List<(string PropertyName, object Rule, Type PropertyType)>();
+                _ruleSets.Add(name, new RuleSet<T>(name));
             }
 
-            _ruleSetMap[ruleSet].Add((propertyName, builder, typeof(TProperty)));
-            return builder;
+            var previousRuleSet = _currentRuleSet;
+            _currentRuleSet = name;
+
+            action();
+
+            _currentRuleSet = previousRuleSet;
+        }
+
+        /// <summary>
+        /// Includes another validator.
+        /// </summary>
+        /// <param name="validator">The validator to include.</param>
+        public void Include(IValidator<T> validator)
+        {
+            var includeRule = new IncludeRule<T>("", validator);
+            _defaultRuleSet.Rules.Add(includeRule);
+        }
+
+        /// <summary>
+        /// Called before validation begins.
+        /// </summary>
+        /// <param name="context">The validation context.</param>
+        /// <returns>True to continue validation, false to stop.</returns>
+        protected virtual bool PreValidate(ValidationContext<T> context)
+        {
+            return true;
+        }
+
+        /// <summary>
+        /// Called before validation begins asynchronously.
+        /// </summary>
+        /// <param name="context">The validation context.</param>
+        /// <returns>A task that represents the asynchronous operation.</returns>
+        protected virtual Task<bool> PreValidateAsync(ValidationContext<T> context)
+        {
+            return Task.FromResult(PreValidate(context));
         }
 
         /// <summary>
         /// Validates an instance.
         /// </summary>
         /// <param name="instance">The instance to validate.</param>
+        /// <param name="ruleSet">Optional rule set name to validate against.</param>
         /// <returns>A validation result.</returns>
-        public ValidationResult Validate(T instance)
+        public ValidationResult Validate(T instance, string? ruleSet = null)
         {
-            return ValidateInternal(instance, _rules);
-        }
-
-        /// <summary>
-        /// Validates an instance using a specific rule set.
-        /// </summary>
-        /// <param name="instance">The instance to validate.</param>
-        /// <param name="ruleSet">The rule set name.</param>
-        /// <returns>A validation result.</returns>
-        public ValidationResult Validate(T instance, string ruleSet)
-        {
-            if (!_ruleSetMap.ContainsKey(ruleSet))
+            var context = new ValidationContext<T>(instance)
             {
-                throw new ArgumentException($"Rule set '{ruleSet}' does not exist.");
+                CascadeMode = _cascadeMode
+            };
+
+            if (!PreValidate(context))
+            {
+                return new ValidationResult();
             }
 
-            return ValidateInternal(instance, _ruleSetMap[ruleSet]);
+            var ruleSetsToExecute = GetRuleSetsToExecute(ruleSet);
+            var result = new ValidationResult();
+
+            foreach (var set in ruleSetsToExecute)
+            {
+                foreach (var rule in set.Rules)
+                {
+                    var ruleResult = rule.Validate(context);
+                    result.MergeWith(ruleResult);
+
+                    if (!ruleResult.IsValid && context.CascadeMode == CascadeMode.StopOnFirstFailure)
+                    {
+                        return result;
+                    }
+                }
+            }
+
+            return result;
         }
 
         /// <summary>
         /// Validates an instance asynchronously.
         /// </summary>
         /// <param name="instance">The instance to validate.</param>
+        /// <param name="ruleSet">Optional rule set name to validate against.</param>
         /// <returns>A task that represents the asynchronous validation operation.</returns>
-        public Task<ValidationResult> ValidateAsync(T instance)
+        public async Task<ValidationResult> ValidateAsync(T instance, string? ruleSet = null)
         {
-            return ValidateInternalAsync(instance, _rules);
-        }
-
-        /// <summary>
-        /// Validates an instance using a specific rule set asynchronously.
-        /// </summary>
-        /// <param name="instance">The instance to validate.</param>
-        /// <param name="ruleSet">The rule set name.</param>
-        /// <returns>A task that represents the asynchronous validation operation.</returns>
-        public Task<ValidationResult> ValidateAsync(T instance, string ruleSet)
-        {
-            if (!_ruleSetMap.ContainsKey(ruleSet))
+            var context = new ValidationContext<T>(instance)
             {
-                throw new ArgumentException($"Rule set '{ruleSet}' does not exist.");
+                CascadeMode = _cascadeMode
+            };
+
+            if (!await PreValidateAsync(context))
+            {
+                return new ValidationResult();
             }
 
-            return ValidateInternalAsync(instance, _ruleSetMap[ruleSet]);
-        }
+            var ruleSetsToExecute = GetRuleSetsToExecute(ruleSet);
+            var result = new ValidationResult();
 
-        private ValidationResult ValidateInternal(T instance, List<(string PropertyName, object Rule, Type PropertyType)> rules)
-        {
-            var validationResult = new ValidationResult();
-
-            foreach (var (propertyName, rule, propertyType) in rules)
+            foreach (var set in ruleSetsToExecute)
             {
-                if (rule != null)
+                foreach (var rule in set.Rules)
                 {
-                    var ruleType = rule.GetType();
-                    var checkConditionsMethod = ruleType.GetMethod("CheckConditions");
-                    var buildMethod = ruleType.GetMethod("Build");
+                    var ruleResult = await rule.ValidateAsync(context);
+                    result.MergeWith(ruleResult);
 
-                    if (checkConditionsMethod != null && buildMethod != null)
+                    if (!ruleResult.IsValid && context.CascadeMode == CascadeMode.StopOnFirstFailure)
                     {
-                        var conditionResult = (bool)checkConditionsMethod.Invoke(rule, new object[] { instance });
-                        if (conditionResult)
-                        {
-                            var validationRule = buildMethod.Invoke(rule, Array.Empty<object>());
-                            if (validationRule != null)
-                            {
-                                var validateMethod = validationRule.GetType().GetMethod("Validate");
-                                if (validateMethod != null)
-                                {
-                                    var propertyValue = GetPropertyValue(instance, propertyName);
-                                    var result = (ValidationResult)validateMethod.Invoke(validationRule, new[] { propertyValue });
-                                    if (!result.IsValid)
-                                    {
-                                        foreach (var error in result.Errors)
-                                        {
-                                            validationResult.AddError(propertyName, error.ErrorMessage, error.Severity);
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        return result;
                     }
                 }
             }
 
-            return validationResult;
+            return result;
         }
 
-        private async Task<ValidationResult> ValidateInternalAsync(T instance, List<(string PropertyName, object Rule, Type PropertyType)> rules)
+        private IEnumerable<RuleSet<T>> GetRuleSetsToExecute(string? ruleSet)
         {
-            var validationResult = new ValidationResult();
-            var tasks = new List<(string PropertyName, Task<ValidationResult>)>();
-
-            foreach (var (propertyName, rule, propertyType) in rules)
+            if (string.IsNullOrEmpty(ruleSet))
             {
-                if (rule != null)
-                {
-                    var ruleType = rule.GetType();
-                    var checkConditionsMethod = ruleType.GetMethod("CheckConditions");
-                    var buildMethod = ruleType.GetMethod("Build");
+                yield return _defaultRuleSet;
+                yield break;
+            }
 
-                    if (checkConditionsMethod != null && buildMethod != null)
-                    {
-                        var conditionResult = (bool)checkConditionsMethod.Invoke(rule, new object[] { instance });
-                        if (conditionResult)
-                        {
-                            var validationRule = buildMethod.Invoke(rule, Array.Empty<object>());
-                            if (validationRule != null)
-                            {
-                                var validateAsyncMethod = validationRule.GetType().GetMethod("ValidateAsync");
-                                if (validateAsyncMethod != null)
-                                {
-                                    var propertyValue = GetPropertyValue(instance, propertyName);
-                                    var task = (Task<ValidationResult>)validateAsyncMethod.Invoke(validationRule, new[] { propertyValue });
-                                    tasks.Add((propertyName, task));
-                                }
-                            }
-                        }
-                    }
+            var ruleSetNames = ruleSet.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            foreach (var name in ruleSetNames)
+            {
+                if (_ruleSets.TryGetValue(name, out var set))
+                {
+                    yield return set;
                 }
             }
-
-            foreach (var (propertyName, task) in tasks)
-            {
-                var result = await task;
-                if (!result.IsValid)
-                {
-                    foreach (var error in result.Errors)
-                    {
-                        validationResult.AddError(propertyName, error.ErrorMessage, error.Severity);
-                    }
-                }
-            }
-
-            return validationResult;
-        }
-
-        private string GetPropertyName<TProperty>(Expression<Func<T, TProperty>> expression)
-        {
-            if (expression.Body is MemberExpression memberExpression)
-            {
-                return memberExpression.Member.Name;
-            }
-
-            throw new ArgumentException("Expression must be a member expression");
-        }
-
-        private object GetPropertyValue(T instance, string propertyName)
-        {
-            var property = typeof(T).GetProperty(propertyName);
-            if (property == null)
-            {
-                throw new ArgumentException($"Property '{propertyName}' not found on type '{typeof(T).Name}'");
-            }
-
-            return property.GetValue(instance);
         }
     }
 }

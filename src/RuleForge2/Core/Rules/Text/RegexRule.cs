@@ -1,19 +1,16 @@
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using RuleForge2.Abstractions;
 using RuleForge2.Core.Validation;
 
-namespace RuleForge2.Core.Rules.Common
+namespace RuleForge2.Core.Rules.Text
 {
     /// <summary>
-    /// Rule that validates an email address.
+    /// Rule that validates if a string matches a regular expression pattern.
     /// </summary>
-    public class EmailRule : IRule<string>
+    public class RegexRule : IRule<string>
     {
         private readonly string _propertyName;
-        private static readonly Regex EmailRegex = new Regex(
-            @"^[^@\s]+@[^@\s]+\.[^@\s]+$",
-            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private readonly Regex _regex;
 
         /// <summary>
         /// Gets or sets the error message for the rule.
@@ -21,28 +18,31 @@ namespace RuleForge2.Core.Rules.Common
         public string ErrorMessage { get; set; }
 
         /// <summary>
-        /// Initializes a new instance of the EmailRule class.
+        /// Initializes a new instance of the RegexRule class.
         /// </summary>
         /// <param name="propertyName">The name of the property being validated.</param>
-        public EmailRule(string propertyName)
+        /// <param name="pattern">The regular expression pattern.</param>
+        /// <param name="options">Regular expression options.</param>
+        public RegexRule(string propertyName, string pattern, RegexOptions options = RegexOptions.None)
         {
             _propertyName = propertyName;
-            ErrorMessage = $"{propertyName} must be a valid email address";
+            _regex = new Regex(pattern, options);
+            ErrorMessage = $"{propertyName} is not in the correct format";
         }
 
         /// <summary>
-        /// Validates that the specified value is a valid email address.
+        /// Validates if the value matches the regular expression pattern.
         /// </summary>
         /// <param name="value">The value to validate.</param>
         /// <returns>A validation result.</returns>
         public ValidationResult Validate(string value)
         {
-            if (value == null)
+            if (string.IsNullOrEmpty(value))
             {
-                return ValidationResult.Success(); // Null check should be handled by NotEmptyRule
+                return ValidationResult.Success(); // Null/empty check should be handled by NotEmptyRule
             }
 
-            if (!EmailRegex.IsMatch(value))
+            if (!_regex.IsMatch(value))
             {
                 return ValidationResult.Error(_propertyName, ErrorMessage);
             }
@@ -51,7 +51,7 @@ namespace RuleForge2.Core.Rules.Common
         }
 
         /// <summary>
-        /// Validates that the specified value is a valid email address asynchronously.
+        /// Validates if the value matches the regular expression pattern asynchronously.
         /// </summary>
         /// <param name="value">The value to validate.</param>
         /// <returns>A task that represents the asynchronous validation operation.</returns>

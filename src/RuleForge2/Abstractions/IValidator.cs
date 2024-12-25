@@ -22,5 +22,11 @@ namespace RuleForge2.Abstractions
         /// <param name="instance">The instance to validate.</param>
         /// <returns>A task that represents the asynchronous validation operation.</returns>
         Task<ValidationResult> ValidateAsync(T instance);
+
+        /// <summary>
+        /// Includes another validator.
+        /// </summary>
+        /// <param name="validator">The validator to include.</param>
+        void Include(IValidator<T> validator);
     }
 }

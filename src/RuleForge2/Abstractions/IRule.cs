@@ -4,9 +4,9 @@ using RuleForge2.Core.Validation;
 namespace RuleForge2.Abstractions
 {
     /// <summary>
-    /// Represents a validation rule for a property.
+    /// Interface for validation rules.
     /// </summary>
-    /// <typeparam name="T">The type of the property to validate.</typeparam>
+    /// <typeparam name="T">The type of the value to validate.</typeparam>
     public interface IRule<T>
     {
         /// <summary>
@@ -15,17 +15,27 @@ namespace RuleForge2.Abstractions
         string ErrorMessage { get; set; }
 
         /// <summary>
-        /// Validates the specified value.
+        /// Gets or sets the error message key for localization.
         /// </summary>
-        /// <param name="value">The value to validate.</param>
-        /// <returns>A validation result.</returns>
-        ValidationResult Validate(T value);
+        string? ErrorMessageKey { get; set; }
 
         /// <summary>
-        /// Validates the specified value asynchronously.
+        /// Gets or sets the message formatter.
         /// </summary>
-        /// <param name="value">The value to validate.</param>
+        IMessageFormatter? MessageFormatter { get; set; }
+
+        /// <summary>
+        /// Validates a value.
+        /// </summary>
+        /// <param name="context">The validation context.</param>
+        /// <returns>A validation result.</returns>
+        ValidationResult Validate(ValidationContext<T> context);
+
+        /// <summary>
+        /// Validates a value asynchronously.
+        /// </summary>
+        /// <param name="context">The validation context.</param>
         /// <returns>A task that represents the asynchronous validation operation.</returns>
-        Task<ValidationResult> ValidateAsync(T value);
+        Task<ValidationResult> ValidateAsync(ValidationContext<T> context);
     }
 }
