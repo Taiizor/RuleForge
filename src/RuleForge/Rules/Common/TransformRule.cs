@@ -1,29 +1,29 @@
-using System;
-using System.Threading.Tasks;
-
 namespace RuleForge.Rules.Common
 {
     public class TransformRule<TProperty, TTransformed> : IRule<TProperty>
     {
-        private readonly Func<TProperty, TTransformed> _transformer;
+        private readonly Func<TProperty, TTransformed> _transformFunction;
         private readonly IRule<TTransformed> _rule;
 
-        public TransformRule(Func<TProperty, TTransformed> transformer, IRule<TTransformed> rule)
+        public TransformRule(Func<TProperty, TTransformed> transformFunction, IRule<TTransformed> rule)
         {
-            _transformer = transformer ?? throw new ArgumentNullException(nameof(transformer));
+            _transformFunction = transformFunction ?? throw new ArgumentNullException(nameof(transformFunction));
             _rule = rule ?? throw new ArgumentNullException(nameof(rule));
+            ErrorMessage = rule.ErrorMessage;
         }
+
+        public string ErrorMessage { get; set; }
 
         public ValidationResult Validate(TProperty value)
         {
-            var transformed = _transformer(value);
-            return _rule.Validate(transformed);
+            TTransformed? transformedValue = _transformFunction(value);
+            return _rule.Validate(transformedValue);
         }
 
         public async Task<ValidationResult> ValidateAsync(TProperty value)
         {
-            var transformed = _transformer(value);
-            return await _rule.ValidateAsync(transformed);
+            TTransformed? transformedValue = _transformFunction(value);
+            return await _rule.ValidateAsync(transformedValue);
         }
     }
 }

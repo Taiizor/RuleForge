@@ -9,7 +9,9 @@ namespace RuleForge.Rules.Common
         public ScalePrecisionRule(int precision, int scale, string? errorMessage = null)
         {
             if (scale > precision)
+            {
                 throw new ArgumentException("Scale cannot be greater than precision", nameof(scale));
+            }
 
             _precision = precision;
             _scale = scale;
@@ -18,9 +20,9 @@ namespace RuleForge.Rules.Common
 
         public ValidationResult Validate(decimal value)
         {
-            var parts = value.ToString("G29").Split('.');
-            var integerPart = parts[0].TrimStart('-');
-            var decimalPart = parts.Length > 1 ? parts[1] : "";
+            string[] parts = value.ToString("G29").Split('.');
+            string integerPart = parts[0].TrimStart('-');
+            string decimalPart = parts.Length > 1 ? parts[1] : "";
 
             int integerDigits = integerPart.Length;
             int decimalDigits = decimalPart.Length;

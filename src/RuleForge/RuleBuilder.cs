@@ -1,7 +1,4 @@
 using RuleForge.Rules;
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace RuleForge
 {
@@ -90,18 +87,20 @@ namespace RuleForge
         public ValidationResult Validate(T instance)
         {
             if (!ShouldValidate(instance))
-                return ValidationResult.Success();
-
-            var errors = new List<ValidationError>();
-
-            foreach (var rule in _rules)
             {
-                var value = _propertySelector(instance);
-                var result = rule.Validate(value);
+                return ValidationResult.Success();
+            }
+
+            List<ValidationError> errors = new();
+
+            foreach (IRule<TProperty> rule in _rules)
+            {
+                TProperty? value = _propertySelector(instance);
+                ValidationResult result = rule.Validate(value);
 
                 if (!result.IsValid)
                 {
-                    var formattedMessage = _messageFormatter.Format(result.ErrorMessage);
+                    string formattedMessage = _messageFormatter.Format(result.ErrorMessage);
                     errors.Add(new ValidationError(_propertyName, formattedMessage));
                 }
             }
@@ -115,18 +114,20 @@ namespace RuleForge
         public async Task<ValidationResult> ValidateAsync(T instance)
         {
             if (!ShouldValidate(instance))
-                return ValidationResult.Success();
-
-            var errors = new List<ValidationError>();
-
-            foreach (var rule in _rules)
             {
-                var value = _propertySelector(instance);
-                var result = await rule.ValidateAsync(value);
+                return ValidationResult.Success();
+            }
+
+            List<ValidationError> errors = new();
+
+            foreach (IRule<TProperty> rule in _rules)
+            {
+                TProperty? value = _propertySelector(instance);
+                ValidationResult result = await rule.ValidateAsync(value);
 
                 if (!result.IsValid)
                 {
-                    var formattedMessage = _messageFormatter.Format(result.ErrorMessage);
+                    string formattedMessage = _messageFormatter.Format(result.ErrorMessage);
                     errors.Add(new ValidationError(_propertyName, formattedMessage));
                 }
             }
@@ -137,6 +138,11 @@ namespace RuleForge
         private bool ShouldValidate(T instance)
         {
             return _conditions.Count == 0 || _conditions.All(c => c(instance));
+        }
+
+        public string GetPropertyName()
+        {
+            return _propertyName;
         }
     }
 }

@@ -1,5 +1,3 @@
-using System.Threading.Tasks;
-
 namespace RuleForge.Rules.Common
 {
     public interface ICustomValidator<T>

@@ -37,6 +37,7 @@ namespace RuleForge.DependencyInjectionExtensions
 
                 type = type.BaseType;
             }
+
             return false;
         }
 
@@ -51,6 +52,7 @@ namespace RuleForge.DependencyInjectionExtensions
 
                 type = type.BaseType;
             }
+
             throw new ArgumentException($"Could not find validated type for validator {type}");
         }
     }

@@ -18,7 +18,7 @@ namespace RuleForge.Rules.Common
                 return ValidationResult.Success();
             }
 
-            var errors = new List<string>();
+            List<string> errors = new();
 
             if (value.Length < _options.MinimumLength)
             {
@@ -45,7 +45,7 @@ namespace RuleForge.Rules.Common
                 errors.Add("Password must contain at least one special character");
             }
 
-            if (_options.RequireNonAlphanumeric && value.All(ch => char.IsLetterOrDigit(ch)))
+            if (_options.RequireNonAlphanumeric && value.All(char.IsLetterOrDigit))
             {
                 errors.Add("Password must contain at least one non-alphanumeric character");
             }

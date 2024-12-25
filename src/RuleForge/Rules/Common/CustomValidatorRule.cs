@@ -30,7 +30,7 @@ namespace RuleForge.Rules.Common
 
         public ValidationResult Validate(TProperty? value)
         {
-            return _validator != null 
+            return _validator != null
                 ? _validator(_instance, value)
                 : _asyncValidator(_instance, value).GetAwaiter().GetResult();
         }

@@ -47,8 +47,8 @@ namespace RuleForge.Rules.Common
                 isValid = true;
             }
 
-            return isValid 
-                ? ValidationResult.Success() 
+            return isValid
+                ? ValidationResult.Success()
                 : ValidationResult.Error("Color", ErrorMessage);
         }
 

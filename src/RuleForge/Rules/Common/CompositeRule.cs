@@ -18,7 +18,7 @@ namespace RuleForge.Rules.Common
 
         public ValidationResult Validate(T? value)
         {
-            var results = _rules.Select(rule => rule.Validate(value)).ToList();
+            List<ValidationResult> results = _rules.Select(rule => rule.Validate(value)).ToList();
 
             if (_operator == CompositeRuleOperator.And)
             {
@@ -27,7 +27,7 @@ namespace RuleForge.Rules.Common
                     return ValidationResult.Success();
                 }
 
-                var firstError = results.FirstOrDefault(r => !r.IsValid);
+                ValidationResult firstError = results.FirstOrDefault(r => !r.IsValid);
                 return firstError ?? ValidationResult.Error("Composite", ErrorMessage);
             }
             else // Or operator
@@ -37,15 +37,15 @@ namespace RuleForge.Rules.Common
                     return ValidationResult.Success();
                 }
 
-                var firstError = results.FirstOrDefault();
+                ValidationResult firstError = results.FirstOrDefault();
                 return firstError ?? ValidationResult.Error("Composite", ErrorMessage);
             }
         }
 
         public async Task<ValidationResult> ValidateAsync(T? value)
         {
-            var tasks = _rules.Select(rule => rule.ValidateAsync(value));
-            var results = await Task.WhenAll(tasks);
+            IEnumerable<Task<ValidationResult>> tasks = _rules.Select(rule => rule.ValidateAsync(value));
+            ValidationResult[] results = await Task.WhenAll(tasks);
 
             if (_operator == CompositeRuleOperator.And)
             {
@@ -54,7 +54,7 @@ namespace RuleForge.Rules.Common
                     return ValidationResult.Success();
                 }
 
-                var firstError = results.FirstOrDefault(r => !r.IsValid);
+                ValidationResult firstError = results.FirstOrDefault(r => !r.IsValid);
                 return firstError ?? ValidationResult.Error("Composite", ErrorMessage);
             }
             else // Or operator
@@ -64,7 +64,7 @@ namespace RuleForge.Rules.Common
                     return ValidationResult.Success();
                 }
 
-                var firstError = results.FirstOrDefault();
+                ValidationResult firstError = results.FirstOrDefault();
                 return firstError ?? ValidationResult.Error("Composite", ErrorMessage);
             }
         }

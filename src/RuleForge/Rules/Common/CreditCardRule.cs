@@ -44,8 +44,8 @@ namespace RuleForge.Rules.Common
                 isEven = !isEven;
             }
 
-            return sum % 10 == 0 
-                ? ValidationResult.Success() 
+            return sum % 10 == 0
+                ? ValidationResult.Success()
                 : ValidationResult.Error("CreditCard", ErrorMessage);
         }
 

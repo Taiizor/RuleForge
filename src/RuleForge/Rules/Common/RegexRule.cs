@@ -20,8 +20,8 @@ namespace RuleForge.Rules.Common
                 return ValidationResult.Success();
             }
 
-            return _regex.IsMatch(value) 
-                ? ValidationResult.Success() 
+            return _regex.IsMatch(value)
+                ? ValidationResult.Success()
                 : ValidationResult.Error("Pattern", ErrorMessage);
         }
 

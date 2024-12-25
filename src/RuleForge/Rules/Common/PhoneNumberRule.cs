@@ -23,7 +23,7 @@ namespace RuleForge.Rules.Common
             }
 
             // Remove all non-digit characters for validation
-            string digitsOnly = new string(value.Where(char.IsDigit).ToArray());
+            string digitsOnly = new(value.Where(char.IsDigit).ToArray());
 
             if (digitsOnly.Length < 10 || digitsOnly.Length > 15 || !PhoneRegex.IsMatch(value))
             {

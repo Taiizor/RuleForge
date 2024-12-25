@@ -241,7 +241,7 @@ namespace RuleForge
             Action<PasswordOptions>? configure = null,
             string? message = null)
         {
-            var options = new PasswordOptions();
+            PasswordOptions options = new();
             configure?.Invoke(options);
             return builder.AddRule(new PasswordRule(options, message));
         }
@@ -251,7 +251,7 @@ namespace RuleForge
             Action<JsonSchemaOptions>? configure = null,
             string? message = null)
         {
-            var options = new JsonSchemaOptions();
+            JsonSchemaOptions options = new();
             configure?.Invoke(options);
             return builder.AddRule(new JsonRule(options, message));
         }
@@ -350,6 +350,18 @@ namespace RuleForge
             string? message = null)
         {
             return builder.AddRule(new UnlessRule<T, TProperty>(instance, condition, rule, message));
+        }
+
+        public static RuleBuilder<T, string> Email<T>(this RuleBuilder<T, string> builder)
+        {
+            builder.AddRule(new EmailRule<string>(builder.GetPropertyName()));
+            return builder;
+        }
+
+        public static RuleBuilder<T, TChild> SetValidator<T, TChild>(this RuleBuilder<T, TChild> builder, Validator<TChild> validator)
+        {
+            builder.AddRule(new ChildValidatorRule<TChild>(validator, builder.GetPropertyName()));
+            return builder;
         }
     }
 }

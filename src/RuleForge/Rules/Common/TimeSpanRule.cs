@@ -54,16 +54,27 @@ namespace RuleForge.Rules.Common
 
         private string GetDefaultErrorMessage()
         {
-            var constraints = new List<string>();
+            List<string> constraints = new();
 
             if (_minimum.HasValue)
+            {
                 constraints.Add($"minimum: {_minimum.Value}");
+            }
+
             if (_maximum.HasValue)
+            {
                 constraints.Add($"maximum: {_maximum.Value}");
+            }
+
             if (!_allowZero)
+            {
                 constraints.Add("non-zero");
+            }
+
             if (!_allowNegative)
+            {
                 constraints.Add("non-negative");
+            }
 
             return constraints.Any()
                 ? $"TimeSpan must be {string.Join(", ", constraints)}"

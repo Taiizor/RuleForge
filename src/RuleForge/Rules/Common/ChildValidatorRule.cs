@@ -1,6 +1,3 @@
-using System;
-using System.Threading.Tasks;
-
 namespace RuleForge.Rules.Common
 {
     public class ChildValidatorRule<TParent, TChild> : IRule<TChild>
@@ -12,7 +9,10 @@ namespace RuleForge.Rules.Common
         {
             _validator = validator ?? throw new ArgumentNullException(nameof(validator));
             _parentContext = parentContext;
+            ErrorMessage = "Validation failed for child object";
         }
+
+        public string ErrorMessage { get; set; }
 
         public ValidationResult Validate(TChild value)
         {
@@ -21,7 +21,7 @@ namespace RuleForge.Rules.Common
                 return ValidationResult.Success();
             }
 
-            var context = new ValidationContext<TChild>(value, null, value, _parentContext?.RootInstance, _parentContext as ValidationContext<TChild>);
+            ValidationContext<TChild> context = new(value, null, value, _parentContext?.RootInstance, _parentContext as ValidationContext<TChild>);
             return _validator.Validate(context);
         }
 
@@ -32,7 +32,7 @@ namespace RuleForge.Rules.Common
                 return ValidationResult.Success();
             }
 
-            var context = new ValidationContext<TChild>(value, null, value, _parentContext?.RootInstance, _parentContext as ValidationContext<TChild>);
+            ValidationContext<TChild> context = new(value, null, value, _parentContext?.RootInstance, _parentContext as ValidationContext<TChild>);
             return await _validator.ValidateAsync(context);
         }
     }

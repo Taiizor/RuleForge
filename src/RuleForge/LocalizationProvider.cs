@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Globalization;
 
 namespace RuleForge
@@ -34,8 +32,8 @@ namespace RuleForge
         {
             culture ??= CultureInfo.CurrentCulture;
 
-            if (_translations.TryGetValue(culture.Name, out var translations) &&
-                translations.TryGetValue(key, out var value))
+            if (_translations.TryGetValue(culture.Name, out Dictionary<string, string>? translations) &&
+                translations.TryGetValue(key, out string? value))
             {
                 return value;
             }

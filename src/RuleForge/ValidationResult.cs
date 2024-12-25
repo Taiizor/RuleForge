@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
 namespace RuleForge
 {
     /// <summary>
@@ -5,42 +9,43 @@ namespace RuleForge
     /// </summary>
     public class ValidationResult
     {
-        /// <summary>
-        /// Gets the collection of validation errors.
-        /// </summary>
-        public IReadOnlyList<ValidationError> Errors { get; }
+        private readonly List<ValidationError> _errors;
 
         /// <summary>
         /// Gets a value indicating whether the validation was successful.
         /// </summary>
-        public bool IsValid => !Errors.Any();
+        public bool IsValid { get; }
 
         /// <summary>
-        /// Gets the severity of the validation result.
+        /// Gets the collection of validation errors.
         /// </summary>
-        public Severity Severity { get; }
+        public IEnumerable<ValidationError> Errors => _errors;
 
         /// <summary>
-        /// Gets the custom state of the validation result.
+        /// Initializes a new instance of the ValidationResult class.
         /// </summary>
-        public IDictionary<string, object> CustomState { get; }
+        /// <param name="isValid">Whether the validation was successful</param>
+        /// <param name="errorMessage">The error message</param>
+        /// <param name="severity">The severity of the validation result</param>
+        public ValidationResult(bool isValid, string errorMessage = null, Severity severity = Severity.Error)
+        {
+            IsValid = isValid;
+            _errors = new List<ValidationError>();
 
-        /// <summary>
-        /// Gets the error message.
-        /// </summary>
-        public string ErrorMessage => Errors.FirstOrDefault()?.ErrorMessage;
+            if (!isValid && errorMessage != null)
+            {
+                _errors.Add(new ValidationError(errorMessage, severity));
+            }
+        }
 
         /// <summary>
         /// Initializes a new instance of the ValidationResult class.
         /// </summary>
         /// <param name="errors">The validation errors</param>
-        /// <param name="severity">The severity of the validation result</param>
-        /// <param name="customState">The custom state of the validation result</param>
-        public ValidationResult(IEnumerable<ValidationError> errors, Severity severity = Severity.Error, IDictionary<string, object> customState = null)
+        public ValidationResult(IEnumerable<ValidationError> errors)
         {
-            Errors = errors?.ToList() ?? new List<ValidationError>();
-            Severity = severity;
-            CustomState = customState ?? new Dictionary<string, object>();
+            _errors = errors?.ToList() ?? new List<ValidationError>();
+            IsValid = !_errors.Any();
         }
 
         /// <summary>
@@ -48,7 +53,7 @@ namespace RuleForge
         /// </summary>
         public static ValidationResult Success()
         {
-            return new ValidationResult(Enumerable.Empty<ValidationError>());
+            return new ValidationResult(true);
         }
 
         /// <summary>
@@ -56,16 +61,21 @@ namespace RuleForge
         /// </summary>
         public static ValidationResult Error(string propertyName, string errorMessage, Severity severity = Severity.Error)
         {
-            return new ValidationResult(new[] { new ValidationError(propertyName, errorMessage) }, severity);
+            return new ValidationResult(new[] { new ValidationError(errorMessage, severity) });
         }
 
         /// <summary>
-        /// Adds a custom state to the validation result.
+        /// Combines multiple validation results into a single result.
         /// </summary>
-        public ValidationResult WithCustomState(string key, object value)
+        public static ValidationResult Combine(params ValidationResult[] results)
         {
-            CustomState[key] = value;
-            return this;
+            if (results == null || results.Length == 0)
+            {
+                return Success();
+            }
+
+            var errors = results.SelectMany(r => r.Errors).ToList();
+            return new ValidationResult(errors);
         }
     }
 
@@ -75,22 +85,22 @@ namespace RuleForge
     public class ValidationError
     {
         /// <summary>
-        /// Gets the name of the property that failed validation.
-        /// </summary>
-        public string PropertyName { get; }
-
-        /// <summary>
         /// Gets the error message.
         /// </summary>
         public string ErrorMessage { get; }
 
         /// <summary>
+        /// Gets the severity of the validation error.
+        /// </summary>
+        public Severity Severity { get; }
+
+        /// <summary>
         /// Initializes a new instance of the ValidationError class.
         /// </summary>
-        public ValidationError(string propertyName, string errorMessage)
+        public ValidationError(string errorMessage, Severity severity)
         {
-            PropertyName = propertyName;
             ErrorMessage = errorMessage;
+            Severity = severity;
         }
     }
 

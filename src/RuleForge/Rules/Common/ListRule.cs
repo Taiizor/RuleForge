@@ -31,8 +31,8 @@ namespace RuleForge.Rules.Common
                 _ => throw new ArgumentException("Invalid rule type")
             };
 
-            return isValid 
-                ? ValidationResult.Success() 
+            return isValid
+                ? ValidationResult.Success()
                 : ValidationResult.Error("List", ErrorMessage);
         }
 

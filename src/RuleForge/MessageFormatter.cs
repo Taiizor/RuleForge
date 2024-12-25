@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Text.RegularExpressions;
 
 namespace RuleForge
@@ -25,14 +22,16 @@ namespace RuleForge
         public string Format(string message)
         {
             if (string.IsNullOrEmpty(message))
+            {
                 return message;
+            }
 
             return Regex.Replace(message, @"\{([^{}]+)\}", match =>
             {
                 string placeholder = match.Groups[1].Value;
-                if (_placeholderValues.TryGetValue(placeholder, out var valueProvider))
+                if (_placeholderValues.TryGetValue(placeholder, out Func<object>? valueProvider))
                 {
-                    var value = valueProvider();
+                    object value = valueProvider();
                     return FormatValue(value);
                 }
                 return match.Value;
@@ -42,10 +41,14 @@ namespace RuleForge
         private string FormatValue(object value)
         {
             if (value == null)
+            {
                 return string.Empty;
+            }
 
             if (value is IFormattable formattable)
+            {
                 return formattable.ToString(null, _culture);
+            }
 
             return value.ToString();
         }

@@ -21,8 +21,8 @@ namespace RuleForge.Rules.Common
             }
 
             bool isValid = value.CompareTo(_from) >= 0 && value.CompareTo(_to) <= 0;
-            return isValid 
-                ? ValidationResult.Success() 
+            return isValid
+                ? ValidationResult.Success()
                 : ValidationResult.Error("Range", ErrorMessage);
         }
 

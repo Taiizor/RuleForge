@@ -21,7 +21,7 @@ namespace RuleForge.Rules.Common
 
         public ValidationResult Validate(TProperty? value)
         {
-            var dependentValue = _dependencySelector(_instance);
+            TDependency? dependentValue = _dependencySelector(_instance);
             return _validator(value, dependentValue);
         }
 

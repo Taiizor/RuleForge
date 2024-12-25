@@ -1,9 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Threading.Tasks;
 using RuleForge.Rules.Common;
+using System.Linq.Expressions;
 
 namespace RuleForge
 {
@@ -88,7 +84,7 @@ namespace RuleForge
         /// <summary>
         /// Creates a rule builder for a specific property.
         /// </summary>
-        protected RuleBuilder<T, TProperty> RuleFor<TProperty>(Expression<Func<T, TProperty>> expression)
+        public RuleBuilder<T, TProperty> RuleFor<TProperty>(Expression<Func<T, TProperty>> expression)
         {
             string propertyName = GetPropertyName(expression);
             Func<T, TProperty> compiled = expression.Compile();
@@ -102,7 +98,7 @@ namespace RuleForge
         /// <summary>
         /// Creates a rule builder for a specific property and adds it to the specified rule set.
         /// </summary>
-        protected RuleBuilder<T, TProperty> RuleFor<TProperty>(Expression<Func<T, TProperty>> expression, string ruleSet)
+        public RuleBuilder<T, TProperty> RuleFor<TProperty>(Expression<Func<T, TProperty>> expression, string ruleSet)
         {
             string propertyName = GetPropertyName(expression);
             Func<T, TProperty> compiled = expression.Compile();
@@ -123,7 +119,7 @@ namespace RuleForge
         public void Include(Validator<T> validator)
         {
             _rules.AddRange(validator._rules);
-            foreach (var ruleSet in validator._ruleSets)
+            foreach (KeyValuePair<string, List<RuleBuilder<T, object>>> ruleSet in validator._ruleSets)
             {
                 if (!_ruleSets.ContainsKey(ruleSet.Key))
                 {
@@ -165,17 +161,17 @@ namespace RuleForge
 
         private ValidationResult ValidateInternal(T instance, List<RuleBuilder<T, object>> rules)
         {
-            var errors = new List<ValidationError>();
-            var context = new ValidationContext<T>(instance);
+            List<ValidationError> errors = new();
+            ValidationContext<T> context = new(instance);
 
             if (!ShouldValidate(context))
             {
                 return ValidationResult.Success();
             }
 
-            foreach (var builder in rules)
+            foreach (RuleBuilder<T, object> builder in rules)
             {
-                var result = builder.Validate(instance);
+                ValidationResult result = builder.Validate(instance);
                 if (!result.IsValid)
                 {
                     errors.AddRange(result.Errors);
@@ -191,17 +187,17 @@ namespace RuleForge
 
         private async Task<ValidationResult> ValidateInternalAsync(T instance, List<RuleBuilder<T, object>> rules)
         {
-            var errors = new List<ValidationError>();
-            var context = new ValidationContext<T>(instance);
+            List<ValidationError> errors = new();
+            ValidationContext<T> context = new(instance);
 
             if (!ShouldValidate(context))
             {
                 return ValidationResult.Success();
             }
 
-            foreach (var builder in rules)
+            foreach (RuleBuilder<T, object> builder in rules)
             {
-                var result = await builder.ValidateAsync(instance);
+                ValidationResult result = await builder.ValidateAsync(instance);
                 if (!result.IsValid)
                 {
                     errors.AddRange(result.Errors);

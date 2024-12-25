@@ -34,7 +34,7 @@ namespace RuleForge.AspNetCore
 
                     if (!validationResult.IsValid)
                     {
-                        ValidationProblemDetails problemDetails = new ValidationProblemDetails
+                        ValidationProblemDetails problemDetails = new()
                         {
                             Title = "Validation Error",
                             Status = StatusCodes.Status400BadRequest
@@ -55,6 +55,7 @@ namespace RuleForge.AspNetCore
                         }
 
                         context.Result = new BadRequestObjectResult(problemDetails);
+
                         return;
                     }
                 }

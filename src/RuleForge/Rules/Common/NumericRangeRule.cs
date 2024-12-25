@@ -25,7 +25,7 @@ namespace RuleForge.Rules.Common
             if (_minimum != null)
             {
                 int compareMin = value.CompareTo(_minimum);
-                if (_inclusive && compareMin < 0 || !_inclusive && compareMin <= 0)
+                if ((_inclusive && compareMin < 0) || (!_inclusive && compareMin <= 0))
                 {
                     return ValidationResult.Error("Range", ErrorMessage);
                 }
@@ -34,7 +34,7 @@ namespace RuleForge.Rules.Common
             if (_maximum != null)
             {
                 int compareMax = value.CompareTo(_maximum);
-                if (_inclusive && compareMax > 0 || !_inclusive && compareMax >= 0)
+                if ((_inclusive && compareMax > 0) || (!_inclusive && compareMax >= 0))
                 {
                     return ValidationResult.Error("Range", ErrorMessage);
                 }

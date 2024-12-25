@@ -8,7 +8,7 @@ namespace RuleForge.Rules.Common
 
         public FileExtensionRule(IEnumerable<string> allowedExtensions, bool caseSensitive = false, string? errorMessage = null)
         {
-            var comparer = caseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
+            StringComparer comparer = caseSensitive ? StringComparer.Ordinal : StringComparer.OrdinalIgnoreCase;
             _allowedExtensions = new HashSet<string>(
                 allowedExtensions.Select(x => x.StartsWith(".") ? x : "." + x),
                 comparer);
@@ -24,7 +24,7 @@ namespace RuleForge.Rules.Common
             }
 
             string extension = Path.GetExtension(value);
-            
+
             if (string.IsNullOrEmpty(extension))
             {
                 return ValidationResult.Error("FileExtension", "File must have an extension");

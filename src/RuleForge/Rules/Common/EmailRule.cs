@@ -1,36 +1,33 @@
+using System;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace RuleForge.Rules.Common
 {
-    public class EmailRule : IRule<string>
+    public class EmailRule<T> : IRule<T>
     {
-        private static readonly Regex EmailRegex = new(
-            @"^[^@\s]+@[^@\s]+\.[^@\s]+$",
-            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private readonly string _propertyName;
+        private readonly Regex _emailRegex = new Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.Compiled);
 
-        public string ErrorMessage { get; }
+        public string ErrorMessage { get; set; }
 
-        public EmailRule(string errorMessage = null)
+        public EmailRule(string propertyName)
         {
-            ErrorMessage = errorMessage ?? "Invalid email address";
+            _propertyName = propertyName;
+            ErrorMessage = $"{propertyName} must be a valid email address";
         }
 
-        public ValidationResult Validate(string value)
+        public ValidationResult Validate(T value)
         {
-            if (string.IsNullOrEmpty(value))
+            if (value == null || !_emailRegex.IsMatch(value.ToString()))
             {
-                return ValidationResult.Success();
+                return new ValidationResult(false, ErrorMessage);
             }
 
-            if (!EmailRegex.IsMatch(value))
-            {
-                return ValidationResult.Error("Email", ErrorMessage);
-            }
-
-            return ValidationResult.Success();
+            return new ValidationResult(true);
         }
 
-        public Task<ValidationResult> ValidateAsync(string value)
+        public Task<ValidationResult> ValidateAsync(T value)
         {
             return Task.FromResult(Validate(value));
         }
