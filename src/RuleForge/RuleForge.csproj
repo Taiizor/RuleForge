@@ -1,18 +1,14 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
-        <LangVersion>latest</LangVersion>
+        <TargetFrameworks>netstandard2.0;netstandard2.1;net6.0;net7.0;net8.0</TargetFrameworks>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <Version>1.0.0</Version>
-        <Authors>RuleForge Contributors</Authors>
-        <Description>A flexible and powerful validation library for .NET applications</Description>
-        <PackageTags>validation;rules;fluent;validation-rules</PackageTags>
+        <Authors>RuleForge Team</Authors>
+        <Description>A flexible and extensible validation library for .NET</Description>
+        <LangVersion>latest</LangVersion>
     </PropertyGroup>
-
-    <ItemGroup>
-      <PackageReference Include="System.Text.Json" Version="9.0.0" />
-    </ItemGroup>
 
 </Project>
